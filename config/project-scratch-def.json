@@ -1,0 +1,28 @@
+{
+  "orgName": "Demo company",
+  "edition": "Developer",
+  "settings": {
+    "lightningExperienceSettings": {
+        "enableS1DesktopEnabled": true
+    },
+    "languageSettings": {
+        "enableTranslationWorkbench": true
+    },
+    "communitiesSettings": {
+        "enableNetworksEnabled": true
+    },
+    "experienceBundleSettings": {
+        "enableExperienceBundleMetadata": true
+    },
+    "mobileSettings": {
+        "enableS1EncryptedStoragePref2": false
+    }
+  },
+  "features": [
+    "AuthorApex",
+    "Communities"
+  ],
+  "language": "en_US",
+  "country": "US"
+}
+

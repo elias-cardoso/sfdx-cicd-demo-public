@@ -1,0 +1,110 @@
+name: SFDX Generate Package - Beta
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: 
+      - test
+    paths:
+      - 'sfdx-project.json'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '10.x'
+
+    # Install SFDX CLI for our jobs to use 
+    - name: Install SFDX CLI
+      run: |
+        npm install sfdx-cli
+        node_modules/sfdx-cli/bin/run --version
+        node_modules/sfdx-cli/bin/run plugins --core
+
+    # Authenticate the DevHub, refer to https://trailhead.salesforce.com/en/content/learn/modules/sfdx_travis_ci/sfdx_travis_ci_connected_app to create the keys
+    - name: Authenticate DevHub
+      run:  node_modules/sfdx-cli/bin/run force:auth:jwt:grant -u ${{ secrets.SALESFORCE_DEVHUB_USERNAME}} -f server.key -i ${{ secrets.SALESFORCE_CONSUMER_KEY }} -r https://login.salesforce.com --setdefaultdevhubusername -a devhub
+
+    # Create scratch org  
+    - name: Define CI org
+      run: node_modules/sfdx-cli/bin/run force:org:create -v devhub -s -f config/project-scratch-def.json -a ciorg -d 1
+
+    # Deploy Source code to Scratch org
+    - name: Deploy source
+      run: node_modules/sfdx-cli/bin/run force:source:push -u ciorg
+
+    # Run Apex Tests
+    - name: Run Apex test
+      run: node_modules/sfdx-cli/bin/run force:apex:test:run -c -r human
+
+    # Delete Scratch Org to prevent usage of limits
+    - name: Delete Scratch Org
+      run: node_modules/sfdx-cli/bin/run force:org:delete -u ciorg -p
+  
+  package:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    needs: build      
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '10.x'
+
+    # Install SFDX CLI for our jobs to use 
+    - name: Install SFDX CLI
+      run: |
+        npm install sfdx-cli
+        node_modules/sfdx-cli/bin/run --version
+        node_modules/sfdx-cli/bin/run plugins --core
+
+    # Authenticate the DevHub, refer to https://trailhead.salesforce.com/en/content/learn/modules/sfdx_travis_ci/sfdx_travis_ci_connected_app to create the keys
+    - name: Authenticate DevHub
+      run: node_modules/sfdx-cli/bin/run force:auth:jwt:grant -u ${{ secrets.SALESFORCE_DEVHUB_USERNAME}} -f server.key -i ${{ secrets.SALESFORCE_CONSUMER_KEY }} -r https://login.salesforce.com --setdefaultdevhubusername -a devhub
+
+    # Create Package Version
+    - name: Create Package Version
+      id: version
+      run: |
+        PACKAGE_CREATION_MESSAGE=$(node_modules/sfdx-cli/bin/run force:package:version:create -p "Fielo 2nd Gen Package Test - Father" -x --wait 120 --skipvalidation)
+        PACKAGE_URL=$(echo ${PACKAGE_CREATION_MESSAGE}|grep -Eo 'https://[^ >]+'|head -1)
+        echo ${PACKAGE_URL}
+        PACKAGE_ID=$(echo ${PACKAGE_URL}|grep -Eo '04t[^ >]+'|head -1)
+        echo ${PACKAGE_ID}
+        PACKAGE_INFO=$(node_modules/sfdx-cli/bin/run force:package:version:report -p ${PACKAGE_ID})
+        PACKAGE_INFO="${PACKAGE_INFO//'%'/'%25'}"
+        PACKAGE_INFO="${PACKAGE_INFO//$'\n'/'%0A'}"
+        PACKAGE_INFO="${PACKAGE_INFO//$'\r'/'%0D'}"
+        echo ${PACKAGE_INFO}
+        echo "::set-output name=package_url::${PACKAGE_URL}"
+        echo "::set-output name=package_info::${PACKAGE_INFO}"
+
+    - name: Send mail
+      uses: dawidd6/action-send-mail@v2
+      with:
+        server_address: smtp.zoho.com
+        server_port: 587
+        username: ${{secrets.MAIL_USERNAME}}
+        password: ${{secrets.MAIL_PASSWORD}}
+        subject: New Beta Package Version available
+        # Literal body:
+        body: | 
+          A new version of Fielo 2nd Gen Package Test - Father package is available, please visit ${{ steps.version.outputs.package_url }} to install it.
+          <br><br>Package information:
+          <br><div style="white-space: pre-line">${{ steps.version.outputs.package_info }}</div>
+        to: elias.cardoso@fielo.com
+        content_type: text/html
+        from: GitHub Bot # <user@example.com>
+        

@@ -1,0 +1,35 @@
+{
+    "packageDirectories": [
+        {
+            "path": "father-app",
+            "default": true,
+            "package": "Fielo 2nd Gen Package Test - Father",
+            "versionName": "ver 1.9",
+            "versionNumber": "1.9.0.NEXT",
+            "definitionFile": "config/project-scratch-def.json",
+            "postInstallScript": "PostInstallFatherClass"
+        },
+        {
+            "path": "son-app",
+            "package": "Fielo 2nd Gen Package Test - Son",
+            "versionName": "ver 1.0",
+            "versionNumber": "1.0.0.NEXT",
+            "default": false,
+            "postInstallScript": "PostInstallClass",
+            "dependencies": [
+                {
+                    "package": "Fielo 2nd Gen Package Test - Father",
+                    "versionNumber": "1.7.0.LATEST"
+                }
+            ]
+        }
+    ],
+    "namespace": "EliasPkgTest",
+    "sfdcLoginUrl": "https://login.salesforce.com",
+    "sourceApiVersion": "48.0",
+    "packageAliases": {
+        "Fielo 2nd Gen Package Test - Father": "0Ho3t00000000BLCAY",
+        "Fielo 2nd Gen Package Test - Son": "0Ho3t00000000BGCAY",
+        "Fielo 2nd Gen Package Test - Father@1.8.0-2": "04t3t000001gYfJAAU"
+    }
+}
